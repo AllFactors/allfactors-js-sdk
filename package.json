@@ -1,6 +1,6 @@
 {
   "name": "allfactors",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "AllFactors JS / TypeScript server-side SDK",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -16,7 +16,13 @@
     "type": "git",
     "url": "git+https://github.com/AllFactors/allfactors-js-sdk.git"
   },
-  "keywords": ["allfactors", "analytics", "sdk", "typescript", "nodejs"],
+  "keywords": [
+    "allfactors",
+    "analytics",
+    "sdk",
+    "typescript",
+    "nodejs"
+  ],
   "author": "AllFactors",
   "license": "MIT",
   "type": "commonjs",
