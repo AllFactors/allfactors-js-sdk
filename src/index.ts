@@ -1,6 +1,9 @@
 import axios, { AxiosInstance, AxiosProxyConfig } from 'axios';
 import crypto from 'crypto';
 import { version } from '../package.json';
+import { validateConstructorArgs } from './validation/constructor';
+import { validateSignupArgs } from './validation/signup';
+export { ValidationError } from './errors';
 
 export interface AllFactorsProxyConfig {
   host: string;
@@ -16,6 +19,12 @@ export interface AllFactorsConfig {
   proxy?: AllFactorsProxyConfig;
 }
 
+export type ValidateResponse = { status: 'ok' } | { error: string };
+
+export type SignupResponse =
+  | { status: 'success'; message: string; domain: string; event_type: string }
+  | { error: string };
+
 export class AllFactors {
   private accessKey: string;
   private secretKey: string;
@@ -24,9 +33,10 @@ export class AllFactors {
   private baseUrl: string = 'https://sdk-events.allfactors.com';
 
   constructor(domain: string, accessKey: string, secretKey: string, config?: AllFactorsConfig) {
-    this.accessKey = accessKey;
-    this.secretKey = secretKey;
-    this.domain = domain;
+    const sanitized = validateConstructorArgs(domain, accessKey, secretKey, config);
+    this.accessKey = sanitized.accessKey;
+    this.secretKey = sanitized.secretKey;
+    this.domain = sanitized.domain;
 
     const axiosConfig: any = {
       baseURL: this.baseUrl,
@@ -34,19 +44,21 @@ export class AllFactors {
         'Content-Type': 'application/json',
         'User-Agent': `allfactors-js-sdk/${version}`,
       },
+      timeout: 30000, // 30 second timeout
     };
 
-    if (config?.proxy) {
+    if (sanitized.config?.proxy) {
+      const proxy = sanitized.config.proxy;
       const proxyConfig: AxiosProxyConfig = {
-        host: config.proxy.host,
-        port: config.proxy.port,
-        protocol: config.proxy.protocol,
+        host: proxy.host,
+        port: proxy.port,
+        protocol: proxy.protocol,
       };
 
-      if (config.proxy.auth) {
+      if (proxy.auth) {
         proxyConfig.auth = {
-          username: config.proxy.auth.username,
-          password: config.proxy.auth.password,
+          username: proxy.auth.username,
+          password: proxy.auth.password,
         };
       }
 
@@ -56,7 +68,7 @@ export class AllFactors {
     this.httpClient = axios.create(axiosConfig);
   }
 
-  async validate(): Promise<void> {
+  async validate(): Promise<ValidateResponse> {
     try {
       const ts = Date.now();
       const payload = { access_key: this.accessKey, ts };
@@ -67,9 +79,13 @@ export class AllFactors {
         signature,
       });
 
-      if (response.data?.status !== 'ok') {
+      const data = response.data as ValidateResponse;
+
+      if (!('status' in data) || data.status !== 'ok') {
         throw new Error(`AllFactors validation failed: unexpected response from server`);
       }
+
+      return data;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const serverMessage = error.response?.data?.error;
@@ -88,17 +104,18 @@ export class AllFactors {
     return hmac.digest('hex');
   }
 
-  async send_signup(email: string, type: 'oauth' | 'form', hostname: string, path: string, af_usr: string, af_ses: string): Promise<any> {
+  async send_signup(email: string, type: 'oauth' | 'form', hostname: string, path: string, af_usr: string, af_ses: string): Promise<SignupResponse> {
     try {
+      const sanitized = validateSignupArgs(email, type, hostname, path, af_usr, af_ses);
       const ts = Date.now();
       const payload = {
         event: {
-          type,
-          email,
-          hostname,
-          path,
-          af_usr,
-          af_ses,
+          type: sanitized.type,
+          email: sanitized.email,
+          hostname: sanitized.hostname,
+          path: sanitized.path,
+          af_usr: sanitized.af_usr,
+          af_ses: sanitized.af_ses,
           ts,
           access_key: this.accessKey,
         }
@@ -111,7 +128,7 @@ export class AllFactors {
         signature,
       });
 
-      return response.data;
+      return response.data as SignupResponse;
     } catch (error) {
       if (axios.isAxiosError(error)) {
         const serverMessage = error.response?.data?.error;
