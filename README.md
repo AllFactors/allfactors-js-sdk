@@ -10,65 +10,61 @@ npm install allfactors
 
 ## Usage
 
-### TypeScript
+### TypeScript (Next.js)
 
 ```typescript
+import type { NextApiRequest, NextApiResponse } from 'next';
 import AllFactors from 'allfactors';
 
-// Initialize the SDK
 const allfactors = new AllFactors('your-domain', 'your-access-key', 'your-secret-key');
 
-// Send a signup event
-async function trackSignup(hostname: string, path: string) {
-  try {
-    const result = await allfactors.send_signup(
-      'user@example.com',
-      'form',
-      hostname,
-      path,
-      getCookie(request, 'af_usr'),
-      getCookie(request, 'af_ses')
-    );
-    console.log('Signup tracked successfully:', result);
-  } catch (error) {
-    console.error('Error tracking signup:', error);
-  }
-}
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { email } = req.body;
 
-trackSignup('app.example.com', '/registration/signup');
+  // ... your registration logic ...
+
+  // af_usr and af_ses are set by the AllFactors client-side tracking script
+  const af_usr = req.cookies['af_usr'];
+  const af_ses = req.cookies['af_ses'];
+
+  if (af_usr && af_ses) {
+    try {
+      await allfactors.send_signup(email, 'form', req.headers.host!, req.url!, af_usr, af_ses);
+    } catch (error) {
+      console.error('AllFactors tracking failed:', error);
+    }
+  }
+
+  res.status(201).json({ success: true });
+}
 ```
 
-### JavaScript (CommonJS)
+### JavaScript / CommonJS (Express)
 
 ```javascript
 const AllFactors = require('allfactors').default;
 
-// Initialize the SDK
 const allfactors = new AllFactors('your-domain', 'your-access-key', 'your-secret-key');
 
-// Helper to read cookies (implementation varies by framework)
-function getCookie(request, name) {
-  // Express: request.cookies[name]
-  // Next.js: request.cookies[name]
-  // Your framework's cookie API
-}
+app.post('/register', async (req, res) => {
+  const { email } = req.body;
 
-// Send a signup event
-async function trackSignup(request, path) {
-  try {
-    const result = await allfactors.send_signup(
-      'user@example.com',
-      'form',
-      request.headers.host?.split(':')[0],
-      path,
-      getCookie(request, 'af_usr'),
-      getCookie(request, 'af_ses')
-    );
-    console.log('Signup tracked successfully:', result);
-  } catch (error) {
-    console.error('Error tracking signup:', error);
+  // ... your registration logic ...
+
+  // af_usr and af_ses are set by the AllFactors client-side tracking script
+  const af_usr = req.cookies['af_usr'];
+  const af_ses = req.cookies['af_ses'];
+
+  if (af_usr && af_ses) {
+    try {
+      await allfactors.send_signup(email, 'form', req.hostname, req.path, af_usr, af_ses);
+    } catch (error) {
+      console.error('AllFactors tracking failed:', error);
+    }
   }
-}
+
+  res.status(201).json({ success: true });
+});
 ```
 
 ### With Proxy Configuration
@@ -168,4 +164,3 @@ This will compile the TypeScript code to JavaScript in the `dist/` directory.
 ## License
 
 MIT
-
