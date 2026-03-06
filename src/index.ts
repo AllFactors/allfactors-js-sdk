@@ -109,23 +109,23 @@ export class AllFactors {
       const sanitized = validateSignupArgs(email, type, hostname, path, af_usr, af_ses);
       const ts = Date.now();
       const payload = {
-        event: {
-          type: sanitized.type,
-          email: sanitized.email,
-          hostname: sanitized.hostname,
-          path: sanitized.path,
-          af_usr: sanitized.af_usr,
-          af_ses: sanitized.af_ses,
-          ts,
-          access_key: this.accessKey,
-        }
+        type: sanitized.type,
+        email: sanitized.email,
+        path: sanitized.path,
+        hostname: sanitized.hostname,
+        af_usr: sanitized.af_usr,
+        af_ses: sanitized.af_ses,
+        ts,
+        access_key: this.accessKey,
       };
 
       const signature = this.createHmacSignature(payload);
 
-      const response = await this.httpClient.post(`/api/v1/signup/${this.domain}/`, {
-        ...payload,
-        signature,
+      const response = await this.httpClient.post(`/api/v1/signup/${this.domain}/`, payload, {
+        headers: {
+          'X-Signature': signature,
+          'X-Access-Key': this.accessKey,
+        },
       });
 
       return response.data as SignupResponse;
